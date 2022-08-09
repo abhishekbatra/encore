@@ -270,6 +270,7 @@ class World(TetrisObject):
         super().__init__()
         self.shapes: list[Shape] = []
         self.net_height = 0
+        # first index signifies y, second index x
         self.units_matrix: dict[int, dict[int, Unit]] = {}
 
     def is_shape_in_vicinity(shape: Shape, pos: Point) -> bool:
@@ -283,6 +284,18 @@ class World(TetrisObject):
     def find_shapes_near(self, pos: Point) -> list[Shape]:
         return [shape for shape in self.shapes if World.is_shape_in_vicinity(shape, pos)]
 
+    def find_top_unit_at_x(self, x: int, shadow_parent: TetrisObject) -> Unit:
+        top_unit: Unit = None
+        units: dict[int, Unit]
+        for y, units in self.units_matrix.items():
+            unit_at_x = units.get(x)
+            if unit_at_x is not None and top_unit is not None and unit_at_x.pos_in_world_coord.y > top_unit.pos_in_world_coord.y and unit_at_x.parent is not shadow_parent:
+                top_unit = unit_at_x
+            elif unit_at_x is not None and top_unit is None and unit_at_x.parent is not shadow_parent:
+                top_unit = unit_at_x
+
+        return top_unit
+
     def place_shape(self, shape: Shape, col: int) -> bool:
         """Places shape in free space according to specified column
 
@@ -295,6 +308,11 @@ class World(TetrisObject):
         """
         placed = False
         pos = Point(col, 0)
+        
+        top_unit_at_x: Unit = self.find_top_unit_at_x(col, shape)
+        if top_unit_at_x is not None and top_unit_at_x.pos_in_world_coord.y > 0:
+            pos.y = top_unit_at_x.pos_in_world_coord.y - 1
+
         current_y = 0
 
         while placed is False and current_y < World.MAX_HEIGHT:
@@ -357,11 +375,13 @@ class World(TetrisObject):
                 next_parent.delete_row_at_y(row_index)
                 parent = next_parent
 
-        del self.units_matrix[row_index]
+        self.units_matrix = {}
+
         self.net_height -= 1
         shape: Shape
         for shape in self.shapes:
             self.place_shape(shape, shape.pos.x)
+            self.store_units_in_cache(shape)
 
 
 class TetrisGame:
@@ -425,5 +445,5 @@ class Driver:
 
 if __name__ == '__main__':
     driver = Driver()
-    # driver.run()
-    driver.process_input_line("T1,Z3,I4")
+    driver.run()
+    # driver.process_input_line("Q0,Q2,Q4,Q6,Q8")
