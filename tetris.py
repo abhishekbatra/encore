@@ -12,6 +12,9 @@ class Point:
 
 
 class Point:
+    """2D point with an implicit origin
+    """
+
     def __init__(self, x=0, y=0) -> None:
         self.x = x
         self.y = y
@@ -35,6 +38,9 @@ class World(TetrisObject):
 
 
 class TetrisObject(ABC):
+    """Base class for renderable objects in the `World`
+    """
+
     def __init__(self, parent: TetrisObject = None, pos: Point = None) -> None:
         """
 
@@ -63,6 +69,9 @@ class TetrisObject(ABC):
 
 
 class Unit(TetrisObject):
+    """class signifying the unit block in the game
+    """
+
     def __init__(self, parent: TetrisObject, pos: Point = None) -> None:
         super().__init__(parent, pos)
 
@@ -71,6 +80,9 @@ UnitRow = list[Unit]
 
 
 class Shape(TetrisObject):
+    """A composition of `Unit` blocks that decsribe a tetris shape
+    """
+
     def __init__(self, parent: TetrisObject) -> None:
         super().__init__(parent)
         self.unit_rows: list[UnitRow] = []
@@ -93,10 +105,6 @@ class Shape(TetrisObject):
         else:
             return 0
 
-    @property
-    def top_most_y_at_x(self) -> int:
-        pass
-
     def find_unit_with_pos(self, pos: Point) -> Unit:
         """finds unit with given position in world coordinates
 
@@ -117,6 +125,11 @@ class Shape(TetrisObject):
         return None
 
     def delete_row_at_y(self, unit_y: int):
+        """deletes a row of units from the shape
+
+        Args:
+            unit_y (int): world origin y coordinate for row to delete
+        """
         # This can probably accept unit's y relative to self, since unit contains that information
         unit_row_found = False
         unit_row_index = 0
@@ -143,6 +156,15 @@ class Shape(TetrisObject):
 
 class CollisionDetecter:
     def do_shapes_collide(shape1: Shape, shape2: Shape) -> bool:
+        """returns `True` if at least on of the units of the shape are coincident
+
+        Args:
+            shape1 (Shape): 
+            shape2 (Shape): 
+
+        Returns:
+            bool: 
+        """
         if shape1 is None or shape2 is None or shape1 is shape2:
             return False
 
@@ -252,6 +274,8 @@ ShapeFactory: dict[ShapeType, type] = {
 
 
 class World(TetrisObject):
+    """Singleton world canvas that contains all renderables
+    """
     VICINITY_THRESHOLD_X = 3
     VICINITY_THRESHOLD_Y = 2
     MAX_HEIGHT = 100
@@ -274,6 +298,15 @@ class World(TetrisObject):
         self.units_matrix: dict[int, dict[int, Unit]] = {}
 
     def is_shape_in_vicinity(shape: Shape, pos: Point) -> bool:
+        """checks if `shape` is within threshold distance from `pos` such that a collision is possible
+
+        Args:
+            shape (Shape): 
+            pos (Point): 
+
+        Returns:
+            bool: 
+        """
         is_left = (shape.pos.x + World.VICINITY_THRESHOLD_X >=
                    pos.x) and shape.pos.y + World.VICINITY_THRESHOLD_Y >= pos.y
         is_right = (shape.pos.x - World.VICINITY_THRESHOLD_X <=
@@ -282,9 +315,26 @@ class World(TetrisObject):
         return is_left or is_right
 
     def find_shapes_near(self, pos: Point) -> list[Shape]:
+        """gets all shapes in vicinity of `pos`
+
+        Args:
+            pos (Point): 
+
+        Returns:
+            list[Shape]: 
+        """
         return [shape for shape in self.shapes if World.is_shape_in_vicinity(shape, pos)]
 
     def find_top_unit_at_x(self, x: int, shadow_parent: TetrisObject) -> Unit:
+        """finds the `unit` with largest `y` coordinate with x coordinate == `x`
+
+        Args:
+            x (int): 
+            shadow_parent (TetrisObject): `parent` whose units are to be excluded from search
+
+        Returns:
+            Unit: 
+        """
         top_unit: Unit = None
         units: dict[int, Unit]
         for y, units in self.units_matrix.items():
@@ -308,7 +358,7 @@ class World(TetrisObject):
         """
         placed = False
         pos = Point(col, 0)
-        
+
         top_unit_at_x: Unit = self.find_top_unit_at_x(col, shape)
         if top_unit_at_x is not None and top_unit_at_x.pos_in_world_coord.y > 0:
             pos.y = top_unit_at_x.pos_in_world_coord.y - 1
@@ -332,6 +382,11 @@ class World(TetrisObject):
         return placed
 
     def store_units_in_cache(self, shape: Shape):
+        """store references to individual units for faster lookup
+
+        Args:
+            shape (Shape): 
+        """
         unit_row: UnitRow
         for unit_row in shape.unit_rows:
             row_index = unit_row[0].pos_in_world_coord.y
@@ -361,6 +416,11 @@ class World(TetrisObject):
         return -1
 
     def delete_row(self, row_index: int):
+        """deletes a row of units
+
+        Args:
+            row_index (int): `y` coordinate of the row of units to delete
+        """
         parent: Shape = None
         next_parent: Shape = None
         unit_row: dict[int, Unit] = self.units_matrix[row_index]
